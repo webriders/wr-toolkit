@@ -1,5 +1,5 @@
 import os
-from setuptools import setup
+from setuptools import setup, find_packages
 
 # Utility function to read the README file.
 # Used for the long_description.  It's nice, because now 1) we have a top level
@@ -13,12 +13,11 @@ setup(
     version = "0.0.1",
     author = "WebRiders",
     author_email = "contact@webriders.com.ua",
-    description = ("An demonstration of how to create, document, and publish "
-                   "to the cheese shop a5 pypi.org."),
+    description = ("Kit with various tools to simplify django/python project development"),
     license = "MIT",
     keywords = "django toolkit utilities",
     url = "https://github.com/webriders/wr-toolkit",
-    packages=['wr_toolkit'],
+    packages=find_packages('.'),
     long_description=read('README.md'),
     classifiers=[
         "Development Status :: 2 - Pre-Alpha",
