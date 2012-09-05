@@ -18,6 +18,25 @@ class JsBundle(AbstractBundle):
     DEFAULT_FILTERS = settings.ASSETS_JS_FILTERS
 
 class CompositeBundle(object):
+    """
+    Composite bundle groups js and css bundles in one and remove duplicates in multiple bundle code.
+
+    Example usage:
+
+    CompositeBundle(
+        name = 'blog_list_all',
+        path = 'blog',
+        css = CssBundle(
+            "blog/css/blog.css",
+            "blog/css/blog_list.css",
+        ),
+        js = JsBundle(
+            "blog/js/blog.js",
+            jquery_composite_bundle.js # you can include another composite bundles this way
+        )
+    ).register()
+
+    """
     def __init__(self, name, path, css=None, js=None):
         self.name = name
         self.css = css
@@ -37,5 +56,3 @@ class CompositeBundle(object):
             register(self.name_css, self.css, output="%s/css/%s.css" % (self.path, self.name))
         if self.js:
             register(self.name_js, self.js, output="%s/js/%s.js" % (self.path, self.name))
-
-
