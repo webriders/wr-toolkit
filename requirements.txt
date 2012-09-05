@@ -1,0 +1,2 @@
+django==1.4.1
+webassets==0.7.1
