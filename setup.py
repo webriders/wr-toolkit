@@ -17,7 +17,7 @@ setup(
     license = "MIT",
     keywords = "django toolkit utilities",
     url = "https://github.com/webriders/wr-toolkit",
-    packages=find_packages('.'),
+    packages=find_packages(),
     long_description=read('README.md'),
     classifiers=[
         "Development Status :: 2 - Pre-Alpha",
