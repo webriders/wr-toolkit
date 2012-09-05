@@ -1,4 +1,5 @@
 from django.conf import settings
+from django_assets import Bundle, register
 
 class AbstractBundle(Bundle):
     DEFAULT_FILTERS = None
