@@ -9,7 +9,7 @@ class AbstractBundle(Bundle):
         if not filters:
             filters = self.DEFAULT_FILTERS
         options['filters'] = filters
-        super(Bundle, self).__init__(*contents, **options)
+        super(AbstractBundle, self).__init__(*contents, **options)
 
 class CssBundle(AbstractBundle):
     DEFAULT_FILTERS = settings.ASSETS_CSS_FILTERS
