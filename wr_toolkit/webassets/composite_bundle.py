@@ -1,6 +1,11 @@
 from django.conf import settings
 from django_assets import Bundle, register
 
+
+class CompositeBundleError(Exception):
+    pass
+
+
 class AbstractBundle(Bundle):
     DEFAULT_FILTERS = None
 
@@ -11,11 +16,14 @@ class AbstractBundle(Bundle):
         options['filters'] = filters
         super(AbstractBundle, self).__init__(*contents, **options)
 
+
 class CssBundle(AbstractBundle):
     DEFAULT_FILTERS = settings.ASSETS_CSS_FILTERS
 
+
 class JsBundle(AbstractBundle):
     DEFAULT_FILTERS = settings.ASSETS_JS_FILTERS
+
 
 class CompositeBundle(object):
     """
@@ -37,7 +45,7 @@ class CompositeBundle(object):
     ).register()
 
     """
-    def __init__(self, name, path, css=None, js=None):
+    def __init__(self, name=None, path=None, css=None, js=None):
         self.name = name
         self.path = path
 
@@ -60,6 +68,9 @@ class CompositeBundle(object):
         return self.name + '_js'
 
     def register(self):
+        if not self.name or not self.path:
+            raise CompositeBundleError("both 'name' and 'path' must be filled")
+
         if self.css:
             register(self.name_css, self.css, output="%s/css/%s.css" % (self.path, self.name))
         if self.js:
