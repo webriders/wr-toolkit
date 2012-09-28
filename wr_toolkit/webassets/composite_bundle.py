@@ -26,11 +26,11 @@ class CompositeBundle(object):
     CompositeBundle(
         name = 'blog_list_all',
         path = 'blog',
-        css = CssBundle(
+        css = (
             "blog/css/blog.css",
             "blog/css/blog_list.css",
         ),
-        js = JsBundle(
+        js = (
             "blog/js/blog.js",
             jquery_composite_bundle.js # you can include another composite bundles this way
         )
@@ -39,9 +39,17 @@ class CompositeBundle(object):
     """
     def __init__(self, name, path, css=None, js=None):
         self.name = name
-        self.css = css
-        self.js = js
         self.path = path
+
+        if isinstance(css, (tuple, list)):
+            self.css = CssBundle(*css)
+        else:
+            self.css = css
+
+        if isinstance(js, (tuple, list)):
+            self.js = CssBundle(*js)
+        else:
+            self.js = js
 
     @property
     def name_css(self):
