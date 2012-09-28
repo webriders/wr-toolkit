@@ -68,24 +68,6 @@ class CompositeBundle(object):
     def name_js(self):
         return self.name + '_js'
 
-    def get_merged_bundles_list(self):
-        merged_css = []
-        merged_js = []
-
-        for incl in self.includes:
-            css, js = incl.get_merged_bundles_list()
-            merged_css.extend(css)
-            merged_css.extend(js)
-
-        merged_css.extend(self.css)
-        merged_css.extend(self.js)
-
-        return merged_css, merged_js
-
-    def get_merged_bundles(self):
-        css, js = self.get_merged_bundles_list()
-        return CssBundle(*css), JsBundle(*js)
-
     def register(self):
         if not self.name or not self.path:
             raise CompositeBundleError("both 'name' and 'path' must be filled")
@@ -97,3 +79,35 @@ class CompositeBundle(object):
 
         if merged_js:
             register(self.name_js, merged_js, output="%s/js/%s.js" % (self.path, self.name))
+
+    def get_merged_bundles(self):
+        css, js = self._get_merged_bundles_list()
+        css = self._clean_duplicates(css)
+        js = self._clean_duplicates(js)
+        return CssBundle(*css), JsBundle(*js)
+
+    def _get_merged_bundles_list(self):
+        merged_css = []
+        merged_js = []
+
+        for incl in self.includes:
+            css, js = incl._get_merged_bundles_list()
+            merged_css.extend(css)
+            merged_js.extend(js)
+
+        merged_css.extend(self.css)
+        merged_js.extend(self.js)
+
+        return merged_css, merged_js
+
+    def _clean_duplicates(self, items):
+        items_set = set(items)
+        unique_items = []
+
+        for item in reversed(items):
+            if item in items_set:
+                items_set.remove(item)
+                unique_items.append(item)
+
+        unique_items.reverse()
+        return unique_items
