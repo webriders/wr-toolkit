@@ -1,28 +1,10 @@
-from django.conf import settings
+from django.core.exceptions import ImproperlyConfigured
 from django_assets import Bundle, register
+from settings import DEFAULT_CSS_FILTERS, DEFAULT_JS_FILTERS
 
 
 class CompositeBundleError(Exception):
     pass
-
-
-class AbstractBundle(Bundle):
-    DEFAULT_FILTERS = None
-
-    def __init__(self, *contents, **options):
-        filters = options.get('filters', None)
-        if not filters:
-            filters = self.DEFAULT_FILTERS
-        options['filters'] = filters
-        super(AbstractBundle, self).__init__(*contents, **options)
-
-
-class CssBundle(AbstractBundle):
-    DEFAULT_FILTERS = settings.ASSETS_CSS_FILTERS
-
-
-class JsBundle(AbstractBundle):
-    DEFAULT_FILTERS = settings.ASSETS_JS_FILTERS
 
 
 class CompositeBundle(object):
@@ -42,13 +24,14 @@ class CompositeBundle(object):
             "blog/css/blog_list.css",
         ),
         js = (
-            "blog/js/blog.js",
-            jquery_composite_bundle.js
+            "blog/js/blog_list.js",
         )
+        filters_css = 'custom_filters_for_css',
+        filters_js = 'custom_filters_for_js',
     ).register()
 
     """
-    def __init__(self, name=None, path=None, css=None, js=None, includes=None):
+    def __init__(self, name=None, path=None, css=None, js=None, includes=None, filters_css=None, filters_js=None):
         if includes:
             assert isinstance(includes, (tuple, list)), "'includes' parameter must be list or tuple"
             assert all(isinstance(i, CompositeBundle) for i in includes), "All includes must be instance of CompositeBundle"
@@ -59,6 +42,9 @@ class CompositeBundle(object):
         self.css = css or []
         self.js = js or []
         self.includes = includes or []
+
+        self.filters_css = filters_css
+        self.filters_js = filters_js
 
     @property
     def name_css(self):
@@ -72,19 +58,36 @@ class CompositeBundle(object):
         if not self.name or not self.path:
             raise CompositeBundleError("both 'name' and 'path' must be filled")
 
-        merged_css, merged_js = self.get_merged_bundles()
+        bundle_css, bundle_js = self.get_merged_bundles()
 
-        if merged_css:
-            register(self.name_css, merged_css, output="%s/css/%s.css" % (self.path, self.name))
+        if bundle_css:
+            register(self.name_css, bundle_css, output="%s/css/%s.css" % (self.path, self.name))
 
-        if merged_js:
-            register(self.name_js, merged_js, output="%s/js/%s.js" % (self.path, self.name))
+        if bundle_js:
+            register(self.name_js, bundle_js, output="%s/js/%s.js" % (self.path, self.name))
 
     def get_merged_bundles(self):
-        css, js = self._get_merged_bundles_list()
-        css = self._clean_duplicates(css)
-        js = self._clean_duplicates(js)
-        return CssBundle(*css), JsBundle(*js)
+        contents_css, contents_js = self._get_merged_bundles_list()
+        contents_css = self._clean_duplicates(contents_css)
+        contents_js = self._clean_duplicates(contents_js)
+
+        filters_css = self.filters_css or DEFAULT_CSS_FILTERS
+        if filters_css is None:
+            raise ImproperlyConfigured('You need to specify ASSETS_DEFAULT_CSS_FILTERS in your Django settings file')
+        elif filters_css == '':
+            bundle_css = Bundle(*contents_css)
+        else:
+            bundle_css = Bundle(*contents_css, filters=filters_css)
+
+        filters_js = self.filters_js or DEFAULT_JS_FILTERS
+        if filters_js is None:
+            raise ImproperlyConfigured('You need to specify ASSETS_DEFAULT_JS_FILTERS in your Django settings file')
+        elif filters_js == '':
+            bundle_js = Bundle(*contents_js)
+        else:
+            bundle_js = Bundle(*contents_js, filters=filters_js)
+
+        return bundle_css, bundle_js
 
     def _get_merged_bundles_list(self):
         merged_css = []
