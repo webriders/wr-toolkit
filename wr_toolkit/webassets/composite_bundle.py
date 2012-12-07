@@ -71,21 +71,30 @@ class CompositeBundle(object):
         contents_css = self._clean_duplicates(contents_css)
         contents_js = self._clean_duplicates(contents_js)
 
-        filters_css = self.filters_css or DEFAULT_CSS_FILTERS
-        if filters_css is None:
-            raise ImproperlyConfigured('You need to specify ASSETS_DEFAULT_CSS_FILTERS in your Django settings file')
-        elif filters_css == '':
-            bundle_css = Bundle(*contents_css)
-        else:
-            bundle_css = Bundle(*contents_css, filters=filters_css)
+        if contents_css:
+            filters_css = self.filters_css or DEFAULT_CSS_FILTERS
 
-        filters_js = self.filters_js or DEFAULT_JS_FILTERS
-        if filters_js is None:
-            raise ImproperlyConfigured('You need to specify ASSETS_DEFAULT_JS_FILTERS in your Django settings file')
-        elif filters_js == '':
-            bundle_js = Bundle(*contents_js)
+            if filters_css is None:
+                raise ImproperlyConfigured('You need to specify ASSETS_DEFAULT_CSS_FILTERS in your Django settings file')
+            elif filters_css == '':
+                bundle_css = Bundle(*contents_css)
+            else:
+                bundle_css = Bundle(*contents_css, filters=filters_css)
         else:
-            bundle_js = Bundle(*contents_js, filters=filters_js)
+            bundle_css = None
+
+
+        if contents_js:
+            filters_js = self.filters_js or DEFAULT_JS_FILTERS
+
+            if filters_js is None:
+                raise ImproperlyConfigured('You need to specify ASSETS_DEFAULT_JS_FILTERS in your Django settings file')
+            elif filters_js == '':
+                bundle_js = Bundle(*contents_js)
+            else:
+                bundle_js = Bundle(*contents_js, filters=filters_js)
+        else:
+            bundle_js = None
 
         return bundle_css, bundle_js
 
