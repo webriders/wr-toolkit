@@ -73,8 +73,8 @@ class CompositeBundle(object):
 
         for incl in self.includes:
             incl_css_bundle, incl_js_bundle = incl.get_merged_bundles()
-            css_bundles.append(incl_css_bundle)
-            js_bundles.append(incl_js_bundle)
+            css_bundles.extend(incl_css_bundle)
+            js_bundles.extend(incl_js_bundle)
 
         if bundle_css:
             css_bundles.append(bundle_css)
