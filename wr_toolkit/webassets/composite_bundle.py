@@ -58,16 +58,32 @@ class CompositeBundle(object):
         if not self.name or not self.path:
             raise CompositeBundleError("both 'name' and 'path' must be filled")
 
-        bundle_css, bundle_js = self.get_merged_bundles()
+        bundles_css, bundles_js = self.get_merged_bundles()
 
-        if bundle_css:
-            register(self.name_css, bundle_css, output="%s/css/%s.css" % (self.path, self.name))
+        if bundles_css:
+            register(self.name_css, *bundles_css, output="%s/css/%s.css" % (self.path, self.name))
 
-        if bundle_js:
-            register(self.name_js, bundle_js, output="%s/js/%s.js" % (self.path, self.name))
+        if bundles_js:
+            register(self.name_js, *bundles_js, output="%s/js/%s.js" % (self.path, self.name))
 
     def get_merged_bundles(self):
-        contents_css, contents_js = self._get_merged_bundles_list()
+        bundle_css, bundle_js = self._get_current_bundles()
+        css_bundles = []
+        js_bundles = []
+
+        for incl in self.includes:
+            incl_css_bundle, incl_js_bundle = incl.get_merged_bundles()
+            css_bundles.append(incl_css_bundle)
+            js_bundles.append(incl_js_bundle)
+
+        if bundle_css:
+            css_bundles.append(bundle_css)
+        if bundle_js:
+            js_bundles.append(bundle_js)
+        return css_bundles, js_bundles
+
+    def _get_current_bundles(self):
+        contents_css, contents_js = self.css, self.js
         contents_css = self._clean_duplicates(contents_css)
         contents_js = self._clean_duplicates(contents_js)
 
@@ -83,7 +99,6 @@ class CompositeBundle(object):
         else:
             bundle_css = None
 
-
         if contents_js:
             filters_js = self.filters_js or DEFAULT_JS_FILTERS
 
@@ -97,20 +112,6 @@ class CompositeBundle(object):
             bundle_js = None
 
         return bundle_css, bundle_js
-
-    def _get_merged_bundles_list(self):
-        merged_css = []
-        merged_js = []
-
-        for incl in self.includes:
-            css, js = incl._get_merged_bundles_list()
-            merged_css.extend(css)
-            merged_js.extend(js)
-
-        merged_css.extend(self.css)
-        merged_js.extend(self.js)
-
-        return merged_css, merged_js
 
     def _clean_duplicates(self, items):
         items_set = set(items)
