@@ -1,6 +1,7 @@
+from collections import MutableMapping
 from django.core.exceptions import ImproperlyConfigured
 from django_assets import Bundle, register
-from settings import DEFAULT_CSS_FILTERS, DEFAULT_JS_FILTERS
+from settings import DEFAULT_CSS_FILTERS, DEFAULT_JS_FILTERS, DEFAULT_CSS_COMPILER, DEFAULT_JS_COMPILER, DEFAULT_ASSETS_DEBUG
 
 
 class CompositeBundleError(Exception):
@@ -31,6 +32,9 @@ class CompositeBundle(object):
     ).register()
 
     """
+
+    debug = DEFAULT_ASSETS_DEBUG
+
     def __init__(self, name=None, path=None, css=None, js=None, includes=None, filters_css=None, filters_js=None):
         if includes:
             assert isinstance(includes, (tuple, list)), "'includes' parameter must be list or tuple"
@@ -43,8 +47,13 @@ class CompositeBundle(object):
         self.js = js or []
         self.includes = includes or []
 
-        self.filters_css = filters_css
-        self.filters_js = filters_js
+        self.filters_css = filters_css or DEFAULT_CSS_FILTERS
+        if isinstance(self.filters_css, str):
+            self.filters_css = map(str.strip, self.filters_css.split(",")) if self.filters_css else []
+
+        self.filters_js = filters_js or DEFAULT_JS_FILTERS
+        if isinstance(self.filters_js, str):
+            self.filters_js = map(str.strip, self.filters_js.split(",")) if self.filters_js else []
 
     @property
     def name_css(self):
@@ -67,60 +76,96 @@ class CompositeBundle(object):
             register(self.name_js, *bundles_js, output="%s/js/%s.js" % (self.path, self.name))
 
     def get_merged_bundles(self):
-        bundle_css, bundle_js = self._get_current_bundles()
+        files_by_ext = self.get_files_by_ext()
+
+        for js_or_css in files_by_ext.values():
+            for ext_files in js_or_css.values():
+                ext_files["files"] = self._clean_duplicates(ext_files.get("files", []))
+                ext_files["filters"] = self._clean_duplicates(ext_files.get("filters", []))
+
         css_bundles = []
         js_bundles = []
 
-        for incl in self.includes:
-            incl_css_bundle, incl_js_bundle = incl.get_merged_bundles()
-            css_bundles.extend(incl_css_bundle)
-            js_bundles.extend(incl_js_bundle)
+        for js_or_css, js_or_css_files in files_by_ext.items():
+            bundles = css_bundles if js_or_css == "css" else js_bundles
+            for ext, js_css in js_or_css_files.items():
+                if js_css["filters"] is None:
+                    raise ImproperlyConfigured('You need to specify ASSETS_DEFAULT_CSS_FILTERS in your Django settings file')
+                elif js_css["filters"] == '':
+                    bundles.append(Bundle(*js_css["files"], output="%s/js/%s_%s.%s" % (self.path, self.name, ext, js_or_css), debug=self.debug))
+                else:
+                    bundles.append(Bundle(*js_css["files"], filters=js_css["filters"], output="%s/js/%s_%s.%s" % (self.path, self.name, ext, js_or_css), debug=self.debug))
 
-        if bundle_css:
-            css_bundles.append(bundle_css)
-        if bundle_js:
-            js_bundles.append(bundle_js)
         return css_bundles, js_bundles
 
-    def _get_current_bundles(self):
-        contents_css, contents_js = self.css, self.js
-        contents_css = self._clean_duplicates(contents_css)
-        contents_js = self._clean_duplicates(contents_js)
+    def get_files_by_ext(self, files_by_ext=None):
+        """
+        Example:
+        >> {
+        >>     "css": {
+        >>         "scss": {"files":["test/css/style.scss"], "filters":[]},
+        >>         "css": {"files":["test/css/style.css"], "filters":[]}
+        >>      },
+        >>      "js": {
+        >>          "js": {"files": ["test/js/main.js"], "filters":[]}
+        >>      }
+        >> }
+        """
 
-        if contents_css:
-            filters_css = self.filters_css or DEFAULT_CSS_FILTERS
+        if files_by_ext is None:
+            files_by_ext = {
+                "css": {},
+                "js": {}
+            }
 
-            if filters_css is None:
-                raise ImproperlyConfigured('You need to specify ASSETS_DEFAULT_CSS_FILTERS in your Django settings file')
-            elif filters_css == '':
-                bundle_css = Bundle(*contents_css)
-            else:
-                bundle_css = Bundle(*contents_css, filters=filters_css)
-        else:
-            bundle_css = None
+        if len(self.includes) > 0:
+            for incl in self.includes:
+                incl.get_files_by_ext(files_by_ext)
 
-        if contents_js:
-            filters_js = self.filters_js or DEFAULT_JS_FILTERS
+        for css in self.css:
+            ext = css.split(".")[-1]
+            if files_by_ext["css"].get(ext) is None:
+                files_by_ext["css"][ext] = {
+                    "files": [],
+                    "filters": []
+                }
 
-            if filters_js is None:
-                raise ImproperlyConfigured('You need to specify ASSETS_DEFAULT_JS_FILTERS in your Django settings file')
-            elif filters_js == '':
-                bundle_js = Bundle(*contents_js)
-            else:
-                bundle_js = Bundle(*contents_js, filters=filters_js)
-        else:
-            bundle_js = None
+            files_by_ext["css"][ext]["files"].append(css)
+            files_by_ext["css"][ext]["filters"].extend(self.filters_css)
 
-        return bundle_css, bundle_js
+        for js in self.js:
+            ext = js.split(".")[-1]
+            if files_by_ext["js"].get(ext) is None:
+                files_by_ext["js"][ext] = {
+                    "files": [],
+                    "filters": []
+                }
 
-    def _clean_duplicates(self, items):
-        items_set = set(items)
-        unique_items = []
+            files_by_ext["js"][ext]["files"].append(js)
+            files_by_ext["js"][ext]["filters"].extend(self.filters_js)
 
-        for item in reversed(items):
-            if item in items_set:
-                items_set.remove(item)
-                unique_items.append(item)
+        return files_by_ext
 
-        unique_items.reverse()
-        return unique_items
+    @staticmethod
+    def _clean_duplicates(items):
+        """
+        Clean duplicates with saving order
+        """
+        unique_files = []
+        for item in items:
+            if item not in unique_files:
+                unique_files.append(item)
+        return unique_files
+
+
+class CompiledBundle(CompositeBundle):
+    debug = False
+
+    def __init__(self, name=None, path=None, css=None, js=None, includes=None, filters_css=None, filters_js=None):
+
+        filters_css = ", ".join(set(map(lambda f: f.strip().lower(), (DEFAULT_CSS_COMPILER + "," + DEFAULT_CSS_FILTERS).split(","))))
+        filters_js = ", ".join(set(map(lambda f: f.strip().lower(), (DEFAULT_JS_COMPILER + "," + DEFAULT_JS_FILTERS).split(","))))
+
+        super(CompiledBundle, self).__init__(
+            name, path, css, js, includes, filters_css=filters_css, filters_js=filters_js
+        )
