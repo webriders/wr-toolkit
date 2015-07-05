@@ -157,14 +157,30 @@ class CompositeBundle(object):
                 unique_files.append(item)
         return unique_files
 
+    @staticmethod
+    def _get_list_filters(filters_str):
+        if filters_str:
+            if isinstance(filters_str, str):
+                return map(lambda f: f.strip().lower(), filters_str.split(","))
+            return filters_str
+        else:
+            return []
+
 
 class CompiledBundle(CompositeBundle):
     debug = False
 
     def __init__(self, name=None, path=None, css=None, js=None, includes=None, filters_css=None, filters_js=None):
+        css_compile_filters = self._get_list_filters(DEFAULT_CSS_COMPILER)
+        css_filters = self._get_list_filters(DEFAULT_CSS_FILTERS)
+        css_compile_filters.extend(css_filters)
 
-        filters_css = ", ".join(set(map(lambda f: f.strip().lower(), (DEFAULT_CSS_COMPILER + "," + DEFAULT_CSS_FILTERS).split(","))))
-        filters_js = ", ".join(set(map(lambda f: f.strip().lower(), (DEFAULT_JS_COMPILER + "," + DEFAULT_JS_FILTERS).split(","))))
+        js_compile_filters = self._get_list_filters(DEFAULT_JS_COMPILER)
+        js_filters = self._get_list_filters(DEFAULT_JS_FILTERS)
+        js_compile_filters.extend(js_filters)
+
+        filters_css = self._clean_duplicates(css_compile_filters)
+        filters_js = self._clean_duplicates(js_compile_filters)
 
         super(CompiledBundle, self).__init__(
             name, path, css, js, includes, filters_css=filters_css, filters_js=filters_js
