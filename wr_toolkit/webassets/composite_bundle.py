@@ -45,15 +45,10 @@ class CompositeBundle(object):
 
         self.css = css or []
         self.js = js or []
-        self.includes = includes or []
+        self.includes = includes or []`
 
-        self.filters_css = filters_css or DEFAULT_CSS_FILTERS
-        if isinstance(self.filters_css, str):
-            self.filters_css = map(str.strip, self.filters_css.split(",")) if self.filters_css else []
-
-        self.filters_js = filters_js or DEFAULT_JS_FILTERS
-        if isinstance(self.filters_js, str):
-            self.filters_js = map(str.strip, self.filters_js.split(",")) if self.filters_js else []
+        self.filters_css = self._get_list_filters(filters_css or DEFAULT_CSS_FILTERS)
+        self.filters_js = self._get_list_filters(filters_js or DEFAULT_JS_FILTERS)
 
     @property
     def name_css(self):
