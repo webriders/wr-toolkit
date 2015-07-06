@@ -45,7 +45,7 @@ class CompositeBundle(object):
 
         self.css = css or []
         self.js = js or []
-        self.includes = includes or []`
+        self.includes = includes or []
 
         self.filters_css = self._get_list_filters(filters_css or DEFAULT_CSS_FILTERS)
         self.filters_js = self._get_list_filters(filters_js or DEFAULT_JS_FILTERS)
