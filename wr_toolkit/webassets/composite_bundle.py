@@ -155,7 +155,7 @@ class CompositeBundle(object):
     def _get_list_filters(filters_str):
         if filters_str:
             if isinstance(filters_str, str):
-                return map(lambda f: f.strip().lower(), filters_str.split(","))
+                return list(map(lambda f: f.strip().lower(), filters_str.split(",")))
             return filters_str
         else:
             return []
