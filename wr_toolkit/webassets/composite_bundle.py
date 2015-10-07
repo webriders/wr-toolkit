@@ -1,7 +1,6 @@
-from collections import MutableMapping
 from django.core.exceptions import ImproperlyConfigured
 from django_assets import Bundle, register
-from settings import DEFAULT_CSS_FILTERS, DEFAULT_JS_FILTERS, DEFAULT_CSS_COMPILER, DEFAULT_JS_COMPILER, DEFAULT_ASSETS_DEBUG
+from wr_toolkit.webassets.settings import *
 
 
 class CompositeBundleError(Exception):
